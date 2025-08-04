@@ -355,8 +355,8 @@ optimizer:
   clip_grad: 1.0
   learning_rate_scheduler:
     learning_rate: 0.0002
-    lr_decay_starting_step: 4198001
-    lr_decay_steps: 522000
+    lr_decay_starting_step: 4000000
+    lr_decay_steps: 0
     lr_decay_style: linear
     lr_warmup_steps: 2000
     lr_warmup_style: linear
@@ -403,7 +403,7 @@ tokens:
   limit_val_batches: 0
   micro_batch_size: 3
   sequence_length: 4096
-  train_steps: 4720000
+  train_steps: 4000000
   val_check_interval: 100
 lighteval:
   slurm_script_dir: "/fsx/loubna/projects_v2/smollm3/nanotron/ablations/eval_results/launch-config"  # Default path for launch scripts

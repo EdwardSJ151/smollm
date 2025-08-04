@@ -19,7 +19,6 @@ SmolLM3 is a 3B parameter language model designed to push the boundaries of smal
 
 - [SmolLM3-3B-Base](https://hf.co/HuggingFaceTB/SmolLM3-3B-Base)
 - [SmolLM3-3B](https://hf.co/HuggingFaceTB/SmolLM3-3B)
-- [Intermediate checkpoints](https://huggingface.co/HuggingFaceTB/SmolLM3-3B-checkpoints)
 - [Blog](https://hf.co/blog/smollm3)
 
 Summary:

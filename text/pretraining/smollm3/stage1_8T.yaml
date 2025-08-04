@@ -202,8 +202,8 @@ optimizer:
   clip_grad: 1.0
   learning_rate_scheduler:
     learning_rate: 0.0002
-    lr_decay_starting_step: 4198001
-    lr_decay_steps: 522000
+    lr_decay_starting_step: 2600000
+    lr_decay_steps: 600000
     lr_decay_style: linear
     lr_warmup_steps: 2000
     lr_warmup_style: linear
@@ -250,7 +250,7 @@ tokens:
   limit_val_batches: 0
   micro_batch_size: 3
   sequence_length: 4096
-  train_steps: 4720000
+  train_steps: 3200000
   val_check_interval: 100
 lighteval:
   slurm_script_dir: "/fsx/elie_bakouch/smollm3_training/1004-nn/nanotron/_final1004/eval_results/launch-config"  # Default path for launch scripts
