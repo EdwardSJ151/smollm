@@ -1,8 +1,8 @@
 from transformers import AutoTokenizer
 
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+# tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-R1-0528")
 
-# Check the chat template for special tokens
 print("Chat template:")
 print(tokenizer.chat_template)
 print("\nSpecial tokens:")

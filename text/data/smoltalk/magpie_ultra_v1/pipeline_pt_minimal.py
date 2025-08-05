@@ -1,4 +1,7 @@
-import faiss
+import os
+os.environ["HF_TOKEN_DUMMY"] = "XXXXX"
+
+# import faiss
 import json
 from typing import Union, Dict, Any, Literal, List, TYPE_CHECKING
 from distilabel.llms import vLLM
@@ -7,12 +10,12 @@ from distilabel.steps.tasks import MagpieGenerator, Task, ChatGeneration
 from distilabel.steps import (
     step,
     StepInput,
-    EmbeddingGeneration,
-    FaissNearestNeighbour,
-    RewardModelScore,
+    # EmbeddingGeneration,
+    # FaissNearestNeighbour,
+    # RewardModelScore,
     CombineOutputs,
 )
-from distilabel.embeddings import SentenceTransformerEmbeddings
+# from distilabel.embeddings import SentenceTransformerEmbeddings
 
 if TYPE_CHECKING:
     from distilabel.steps.tasks.typing import ChatType
@@ -472,12 +475,21 @@ def de_md_logits_processor_for_qwen3(token_ids, logits):
 
     return logits
 
+# Não tem no código original, porém é necessario dado isso: 
+# https://docs.vllm.ai/en/latest/api/vllm/entrypoints/openai/protocol.html?h=logits_processors#vllm.entrypoints.openai.protocol.CompletionRequest.logits_processors
+logits_processor_constructor = {
+    "qualname": "__main__.de_md_logits_processor_for_qwen3",
+    "args": [],
+    "kwargs": {}
+}
 
 with Pipeline(name="magpie-ultra-pt-v1.0") as pipeline:
     generate_instructions = MagpieGenerator(
         llm=vLLM(
-            model="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
-            tokenizer="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+            # model="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+            # tokenizer="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+            model="Qwen/Qwen3-32B",
+            tokenizer="Qwen/Qwen3-32B",
             magpie_pre_query_template="qwen3",
             extra_kwargs={
                 "tensor_parallel_size": 8,
@@ -498,7 +510,7 @@ with Pipeline(name="magpie-ultra-pt-v1.0") as pipeline:
                     151643,  # <|endoftext|> 
                     151644,  # <|im_start|>
                 ],
-                "logits_processors": [de_md_logits_processor_for_qwen3],
+                "logits_processors": [logits_processor_constructor],
             },
         ),
         system_prompt=CATEGORIES_SYSTEM_PROMPTS,
@@ -616,7 +628,8 @@ with Pipeline(name="magpie-ultra-pt-v1.0") as pipeline:
 if __name__ == "__main__":
     distiset = pipeline.run(
         parameters={
-            generate_instructions.name: {"num_rows": 1000000, "resources": {"gpus": 8}},
+            # generate_instructions.name: {"num_rows": 1000000, "resources": {"gpus": 8}},
+            generate_instructions.name: {"num_rows": 100, "resources": {"gpus": 2}},
             assign_difficulty.name: {
                 "llm": {
                     "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
@@ -648,4 +661,4 @@ if __name__ == "__main__":
         },
     )
 
-    distiset.push_to_hub("argilla/magpie-ultra-pt-v1.0")
+    distiset.push_to_hub("EdwardSJ151/magpie-ultra-pt-v1.0")
