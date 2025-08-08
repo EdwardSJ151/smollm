@@ -1,8 +1,12 @@
 import os
 os.environ["HF_TOKEN_DUMMY"] = "XXXXX"
+os.environ["VLLM_USE_V1"] = "0"
+os.environ["VLLM_USE_FLASHINFER_MOE_FP8"] = "1"
+os.environ["VLLM_USE_FLASHINFER_MOE_FP4"] = "1"
 
 # import faiss
 import json
+import time
 from typing import Union, Dict, Any, Literal, List, TYPE_CHECKING
 from distilabel.llms import vLLM
 from distilabel.pipeline import Pipeline
@@ -483,16 +487,33 @@ logits_processor_constructor = {
     "kwargs": {}
 }
 
-with Pipeline(name="magpie-ultra-pt-v1.0") as pipeline:
-    generate_instructions = MagpieGenerator(
+class vLLMWithLogitsProcessor(vLLM):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add logits_processors to the exclude list
+        if hasattr(self, 'exclude_from_signature'):
+            self.exclude_from_signature.add('generation_kwargs_logits_processors')
+        else:
+            self.exclude_from_signature = {'generation_kwargs_logits_processors'}
+
+class MagpieGeneratorWithLogitsProcessor(MagpieGenerator):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add the nested logits_processors field to exclude_from_signature
+        self.exclude_from_signature = self.exclude_from_signature | {
+            "llm_generation_kwargs_logits_processors"
+        }
+
+with Pipeline(name="magpie-ultra-pt-v0.5") as pipeline:
+    generate_instructions = MagpieGeneratorWithLogitsProcessor(
         llm=vLLM(
-            # model="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
-            # tokenizer="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
-            model="Qwen/Qwen3-32B",
-            tokenizer="Qwen/Qwen3-32B",
-            magpie_pre_query_template="qwen3",
+            model="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+            tokenizer="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+            # model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+            # tokenizer="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+            magpie_pre_query_template="qwen2",
             extra_kwargs={
-                "tensor_parallel_size": 1,
+                "tensor_parallel_size": 2,
                 "max_model_len": 8192,
                 "enable_prefix_caching": True,
             },
@@ -510,156 +531,115 @@ with Pipeline(name="magpie-ultra-pt-v1.0") as pipeline:
                     151643,  # <|endoftext|> 
                     151644,  # <|im_start|>
                 ],
-                "logits_processors": [logits_processor_constructor],
+                # "logits_processors": [logits_processor_constructor],
             },
         ),
         system_prompt=CATEGORIES_SYSTEM_PROMPTS,
-        batch_size=250,
+        batch_size=50,
         n_turns=3,
     )
 
-    # get_instruction = GetInstruction(input_batch_size=5000)
+    get_instruction = GetInstruction(input_batch_size=5000)
 
-    # assign_difficulty = AssignTags(
-    #     mission="dificuldade",
-    #     llm=vLLM(
-    #         model="Qwen/Qwen3-8B",
-    #         extra_kwargs={
-    #             "tensor_parallel_size": 1,
-    #         },
-    #         structured_output={
-    #             "format": "json",
-    #             "schema": OUTPUT_DIFFICULTY_JSON_SCHEMA,
-    #         },
-    #     ),
-    #     output_mappings={"model_name": "model_name_difficulty"},
-    #     input_batch_size=1000,
-    # )
+    assign_difficulty = AssignTags(
+        mission="dificuldade",
+        llm=vLLM(
+            model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+            extra_kwargs={
+                "tensor_parallel_size": 1,
+            },
+            structured_output={
+                "format": "json",
+                "schema": OUTPUT_DIFFICULTY_JSON_SCHEMA,
+            },
+        ),
+        output_mappings={"model_name": "model_name_difficulty"},
+        input_batch_size=100,
+    )
 
-    # assign_quality = AssignTags(
-    #     mission="qualidade",
-    #     llm=vLLM(
-    #         model="Qwen/Qwen3-8B",
-    #         extra_kwargs={
-    #             "tensor_parallel_size": 1,
-    #         },
-    #         structured_output={
-    #             "format": "json",
-    #             "schema": OUTPUT_QUALITY_JSON_SCHEMA,
-    #         },
-    #     ),
-    #     output_mappings={"model_name": "model_name_quality"},
-    #     input_batch_size=1000,
-    # )
+    assign_quality = AssignTags(
+        mission="qualidade",
+        llm=vLLM(
+            model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+            extra_kwargs={
+                "tensor_parallel_size": 1,
+            },
+            structured_output={
+                "format": "json",
+                "schema": OUTPUT_QUALITY_JSON_SCHEMA,
+            },
+        ),
+        output_mappings={"model_name": "model_name_quality"},
+        input_batch_size=100,
+    )
 
-    # assign_classification = AssignTags(
-    #     mission="classificacao",
-    #     llm=vLLM(
-    #         model="Qwen/Qwen3-8B",
-    #         extra_kwargs={
-    #             "tensor_parallel_size": 1,
-    #         },
-    #         structured_output={
-    #             "format": "json",
-    #             "schema": OUTPUT_CLASSIFICATION_JSON_SCHEMA,
-    #         },
-    #     ),
-    #     output_mappings={"model_name": "model_name_classification"},
-    #     input_batch_size=1000,
-    # )
+    assign_classification = AssignTags(
+        mission="classificacao",
+        llm=vLLM(
+            model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+            extra_kwargs={
+                "tensor_parallel_size": 1,
+            },
+            structured_output={
+                "format": "json",
+                "schema": OUTPUT_CLASSIFICATION_JSON_SCHEMA,
+            },
+        ),
+        output_mappings={"model_name": "model_name_classification"},
+        input_batch_size=100,
+    )
 
-    # embeddings = EmbeddingGeneration(
-    #     embeddings=SentenceTransformerEmbeddings(
-    #         model="Alibaba-NLP/gte-large-en-v1.5",
-    #         device="cuda",
-    #         trust_remote_code=True,
-    #     ),
-    #     input_mappings={"text": "instruction"},
-    #     output_mappings={"model_name": "model_name_embeddings"},
-    #     input_batch_size=50,
-    # )
+    combine_outputs = CombineOutputs()
 
-    # reward_model_score = RewardModelScore(
-    #     model="RLHFlow/ArmoRM-Llama3-8B-v0.1",
-    #     device_map="auto",
-    #     trust_remote_code=True,
-    #     input_batch_size=20,
-    # )
-
-    # combine_outputs = CombineOutputs()
-
-    # guard = ChatGeneration(
-    #     llm=vLLM(
-    #         # model="meta-llama/Llama-Guard-3-8B",
-    #         model="meta-llama/Llama-Guard-3-1B",
-    #         extra_kwargs={
-    #             "tensor_parallel_size": 1,
-    #         },
-    #         structured_output={
-    #             "format": "regex",
-    #             "schema": r"\n\n(?:safe|unsafe\n(?:S(?:[1-9]|1[0-4])))",
-    #         },
-    #     ),
-    #     input_mappings={"messages": "conversation"},
-    #     output_mappings={"generation": "guard", "model_name": "model_name_guard"},
-    #     input_batch_size=1000,
-    # )
-
-    # nearest_neighbours = FaissNearestNeighbour(
-    #     metric_type=faiss.METRIC_INNER_PRODUCT, k=5
-    # )
-
+    # Sequential pipeline: each step runs after the previous one completes
     (
         generate_instructions
-        # >> get_instruction
-        # >> [
-        #     assign_difficulty,
-        #     assign_quality,
-        #     assign_classification,
-        #     # embeddings,
-        #     # reward_model_score,
-        #     # guard,
-        # ]
-        # >> combine_outputs
-        # >> nearest_neighbours
+        >> get_instruction
+        >> [
+            assign_difficulty,
+            assign_quality,
+            assign_classification,
+        ]
+        >> combine_outputs
     )
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     distiset = pipeline.run(
         parameters={
-            # generate_instructions.name: {"num_rows": 1000000, "resources": {"gpus": 8}},
-            generate_instructions.name: {"num_rows": 100, "resources": {"gpus": 1}},
-            # assign_difficulty.name: {
-            #     "llm": {
-            #         "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
-            #     },
-            #     "resources": {"gpus": 1},
-            # },
-            # assign_quality.name: {
-            #     "llm": {
-            #         "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
-            #     },
-            #     "resources": {"gpus": 1},
-            # },
-            # assign_classification.name: {
-            #     "llm": {
-            #         "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
-            #     },
-            #     "resources": {"gpus": 1},
-            # },
-            
-            # embeddings.name: {
-            #     "resources": {"gpus": 1},
-            # },
-            # reward_model_score.name: {"resources": {"gpus": 1, "replicas": 3}},
-            # guard.name: {
-            #     "llm": {
-            #         "generation_kwargs": {"max_new_tokens": 128, "temperature": 0.0}
-            #     },
-            #     "resources": {"gpus": 1},
-            # },
+            generate_instructions.name: {"num_rows": 100000, "resources": {"gpus": 2}},
+            assign_difficulty.name: {
+                "llm": {
+                    "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
+                },
+                "resources": {"gpus": 1},
+            },
+            assign_quality.name: {
+                "llm": {
+                    "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
+                },
+                "resources": {"gpus": 1},
+            },
+            assign_classification.name: {
+                "llm": {
+                    "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
+                },
+                "resources": {"gpus": 1},
+            },
         },
+        use_cache=False,
+        use_fs_to_pass_data=True,
     )
 
-    distiset.push_to_hub("EdwardSJ151/magpie-ultra-pt-v1.0")
+    end_time = time.time()
+    total_seconds = int(end_time - start_time)
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    print(f"\nPipeline completed in {total_seconds} seconds "
+          f"({hours}h {minutes}m {seconds}s)")
+
+    distiset.push_to_hub("EdwardSJ151/magpie-ultra-pt-v0.5")
