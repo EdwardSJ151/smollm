@@ -535,7 +535,7 @@ with Pipeline(name="magpie-ultra-pt-v0.5") as pipeline:
             },
         ),
         system_prompt=CATEGORIES_SYSTEM_PROMPTS,
-        batch_size=50,
+        batch_size=500,
         n_turns=3,
     )
 
@@ -573,21 +573,21 @@ with Pipeline(name="magpie-ultra-pt-v0.5") as pipeline:
         input_batch_size=100,
     )
 
-    assign_classification = AssignTags(
-        mission="classificacao",
-        llm=vLLM(
-            model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
-            extra_kwargs={
-                "tensor_parallel_size": 1,
-            },
-            structured_output={
-                "format": "json",
-                "schema": OUTPUT_CLASSIFICATION_JSON_SCHEMA,
-            },
-        ),
-        output_mappings={"model_name": "model_name_classification"},
-        input_batch_size=100,
-    )
+    # assign_classification = AssignTags(
+    #     mission="classificacao",
+    #     llm=vLLM(
+    #         model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+    #         extra_kwargs={
+    #             "tensor_parallel_size": 1,
+    #         },
+    #         structured_output={
+    #             "format": "json",
+    #             "schema": OUTPUT_CLASSIFICATION_JSON_SCHEMA,
+    #         },
+    #     ),
+    #     output_mappings={"model_name": "model_name_classification"},
+    #     input_batch_size=100,
+    # )
 
     combine_outputs = CombineOutputs()
 
@@ -598,7 +598,7 @@ with Pipeline(name="magpie-ultra-pt-v0.5") as pipeline:
         >> [
             assign_difficulty,
             assign_quality,
-            assign_classification,
+            # assign_classification,
         ]
         >> combine_outputs
     )
@@ -621,12 +621,12 @@ if __name__ == "__main__":
                 },
                 "resources": {"gpus": 1},
             },
-            assign_classification.name: {
-                "llm": {
-                    "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
-                },
-                "resources": {"gpus": 1},
-            },
+            # assign_classification.name: {
+            #     "llm": {
+            #         "generation_kwargs": {"max_new_tokens": 512, "temperature": 0.0}
+            #     },
+            #     "resources": {"gpus": 1},
+            # },
         },
         use_cache=False,
         use_fs_to_pass_data=True,
